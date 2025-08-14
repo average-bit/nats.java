@@ -154,8 +154,12 @@ task fatJar(type: Jar) {
                 'Implementation-Version': jarVersion,
                 'Implementation-Vendor': 'nats.io')
     }
-    from { configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
+    from sourceSets.main.output
+    from(configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }) {
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+    }
 }
 
 jacoco {
