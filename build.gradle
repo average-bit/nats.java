@@ -8,7 +8,7 @@ plugins {
     id 'jacoco'
     id 'com.github.kt3k.coveralls' version '2.12.0'
     id 'biz.aQute.bnd.builder' version '5.1.2'
-    id "org.gradle.test-retry" version "1.1.9"
+    id "org.gradle.test-retry" version "1.5.8"
     id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
     id 'signing'
 }
@@ -102,6 +102,7 @@ javadoc {
                 "io/nats/client/api/MessageGetRequest.java"
     ]
     classpath = sourceSets.main.runtimeClasspath
+    options.addStringOption('Xdoclint:none', '-quiet')
     doLast {
         if (!OperatingSystem.current().isWindows()) {
             exec {
@@ -148,6 +149,7 @@ task testsJar(type: Jar) {
 
 // run build before running fat jar to get classes
 task fatJar(type: Jar) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     archiveClassifier.set('fat')
     manifest {
         attributes('Implementation-Title': 'Java Nats With Dependencies',
@@ -163,13 +165,13 @@ task fatJar(type: Jar) {
 }
 
 jacoco {
-    toolVersion = "0.8.6"
+    toolVersion = "0.8.11"
 }
 
 jacocoTestReport {
     reports {
-        xml.enabled = true // coveralls plugin depends on xml format report
-        html.enabled = true
+        xml.required.set(true) // coveralls plugin depends on xml format report
+        html.required.set(true)
     }
     afterEvaluate { // only report on main library not examples
         classDirectories.setFrom(files(classDirectories.files.collect {

@@ -43,15 +43,6 @@ public class NatsAutoBench {
             + "\n\ntiny, small and med reduce the number of messages used for tests, which can help on slower machines\n";
 
     public static void main(String[] args) {
-
-        // TO RUN WITH ARGS FROM IDE, ADD A LINE LIKE THESE
-        // args = "myhost:4222 med".split(" ");
-         args = "small PubOnly".split(" ");
-        // args = "large PubOnlyWithHeaders".split(" ");
-        // args = "med JsPubAsync".split(" ");
-        // args = "help".split(" ");
-        // args = "latency large".split(" ");
-
         Arguments a = readArgs(args);
 
         System.out.printf("Connecting to NATS server at %s\n", a.server);
