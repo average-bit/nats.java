@@ -497,7 +497,6 @@ public class NatsBench {
      * @param args command line arguments
      */
     public static void main(String[] args) {
-        args = "-s nats://192.168.50.183:4222 -csv foo".split(" ");
         Properties properties = null;
         try {
             if (args.length == 1 && args[0].endsWith(".properties")) {
