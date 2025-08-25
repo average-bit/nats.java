@@ -19,54 +19,40 @@ import io.nats.client.api.StreamConfiguration;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class JsPubBenchmark extends AutoBenchmark {
-    private static final Map<String, String> SAVED_STREAMS = new HashMap<>();
-    private static final Map<String, String> SAVED_SUBJECTS = new HashMap<>();
-
-    public static String getKey(long messageCount, long messageSize) {
-        return "" + messageCount + "x" + messageSize;
-    }
-
-    public static String getStream(long messageCount, long messageSize) {
-        return SAVED_STREAMS.get(getKey(messageCount, messageSize));
-    }
-
-    public static String getSubject(long messageCount, long messageSize) {
-        return SAVED_SUBJECTS.get(getKey(messageCount, messageSize));
-    }
-
     private final boolean file;
     private final boolean sync;
     private final boolean saveForSub;
+    private final List<String> subjects;
 
-    public JsPubBenchmark(String name, long messageCount, long messageSize, boolean file, boolean sync, boolean saveForSub) {
+    public JsPubBenchmark(String name, long messageCount, long messageSize, boolean file, boolean sync, boolean saveForSub, List<String> subjects) {
         super(name, messageCount, messageSize);
         this.file = file;
         this.sync = sync;
         this.saveForSub = saveForSub;
+        this.subjects = subjects;
     }
 
     public void execute(Options connectOptions) throws InterruptedException {
         byte[] payload = createPayload();
-        String subject = getSubject();
-        String stream = getStream();
-        if (saveForSub) {
-            String key = getKey(getMessageCount(), getMessageSize());
-            SAVED_STREAMS.put(key, stream);
-            SAVED_SUBJECTS.put(key, subject);
-        }
+        String stream = JsPullSubBenchmark.getStream(getMessageCount(), getMessageSize());
 
         try {
             Connection nc = Nats.connect(connectOptions);
 
             StreamConfiguration sc = StreamConfiguration.builder()
                     .name(stream)
-                    .subjects(subject)
+                    .subjects(subjects)
                     .storageType(file ? StorageType.File : StorageType.Memory)
                     .build();
             JetStreamManagement jsm = nc.jetStreamManagement();
+            try {
+                jsm.deleteStream(stream);
+            }
+            catch (Exception ignore) {}
             jsm.addStream(sc);
 
             JetStream js = nc.jetStream();
@@ -75,12 +61,12 @@ public class JsPubBenchmark extends AutoBenchmark {
                 this.startTiming();
                 if (sync) {
                     for (int i = 0; i < this.getMessageCount(); i++) {
-                        js.publish(subject, payload);
+                        js.publish(subjects.get(i % subjects.size()), payload);
                     }
                 }
                 else {
                     for (int i = 0; i < this.getMessageCount(); i++) {
-                        js.publishAsync(subject, payload);
+                        js.publishAsync(subjects.get(i % subjects.size()), payload);
                     }
                 }
                 defaultFlush(nc);

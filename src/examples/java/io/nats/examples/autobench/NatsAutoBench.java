@@ -20,6 +20,7 @@ import java.security.Provider;
 import java.security.Security;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -34,9 +35,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class NatsAutoBench {
     static final String usageString =
             "\nUsage: java -cp <classpath> NatsAutoBench" +
+            "\nUsage: java -cp <classpath> NatsAutoBench" +
                     "\n[serverURL] [help] [tiny|small|med|large] [conscrypt] [jsfile]" +
                     "\n[PubOnly] [PubOnlyWithHeaders] [PubSub] [PubDispatch] [ReqReply] [Latency] " +
-                    "\n[JsPubSync] [JsPubAsync] [JsSub] [JsPubRounds]" +
+                    "\n[JsPubSync] [JsPubAsync] [JsSub] [JsPubRounds] [JsPullSub] [JsPullSubMulti]" +
                     "[-lcsv <filespec>] \n\n"
             + "If no specific test name(s) are supplied all will be run, otherwise only supplied tests will be run."
             + "\n\nUse tls:// or opentls:// to require tls, via the Default SSLContext\n"
@@ -172,19 +174,52 @@ public class NatsAutoBench {
             }
         }
 
+        if (!a.allTests && (a.jsSub || a.jsPullSub || a.jsPullSubMulti)) {
+            if (a.jsPubAsync || (!a.jsPubSync)) {
+                a.jsPubAsync = true; // have to publish somewhere, async is faster
+                jsPubAsyncSaveForJsSub.set(true);
+            }
+            else {
+                jsPubSyncSaveForJsSub.set(false);
+            }
+        }
+
         if (a.allTests || a.jsPubSync) {
             addTests(a.baseMsgs, a.maxSize, tests, sizes, msgsMultiple,
-                    (msize, mcnt) -> new JsPubBenchmark("JsPubSync " + msize, mcnt, msize, a.jsFile, true, jsPubSyncSaveForJsSub.get()));
+                (msize, mcnt) -> new JsPubBenchmark("JsPubSync " + msize, mcnt, msize, a.jsFile, true, jsPubSyncSaveForJsSub.get(),
+                    Collections.singletonList(JsPullSubBenchmark.getSubject(mcnt, msize, 0))));
         }
 
         if (a.allTests || a.jsPubAsync) {
             addTests(a.baseMsgs, a.maxSize, tests, sizes, msgsMultiple,
-                    (msize, mcnt) -> new JsPubBenchmark("JsPubAsync " + msize, mcnt, msize, a.jsFile, false, jsPubAsyncSaveForJsSub.get()));
+                (msize, mcnt) -> new JsPubBenchmark("JsPubAsync " + msize, mcnt, msize, a.jsFile, false, jsPubAsyncSaveForJsSub.get(),
+                    Collections.singletonList(JsPullSubBenchmark.getSubject(mcnt, msize, 0))));
         }
 
         if (a.allTests || a.jsSub) {
             addTests(a.baseMsgs, a.maxSize, tests, sizes, msgsMultiple,
                     (msize, mcnt) -> new JsSubBenchmark("JsSub " + msize, mcnt, msize));
+        }
+
+        if (a.allTests || a.jsPullSub) {
+            addTests(a.baseMsgs, a.maxSize, tests, sizes, msgsMultiple,
+                (msize, mcnt) -> new JsPubBenchmark("JsPubForPull " + msize, mcnt, msize, a.jsFile, false, true,
+                    Collections.singletonList(JsPullSubBenchmark.getSubject(mcnt, msize, 0))));
+            addTests(a.baseMsgs, a.maxSize, tests, sizes, msgsMultiple,
+                (msize, mcnt) -> new JsPullSubBenchmark("JsPullSub " + msize, mcnt, msize, false));
+        }
+
+        if (a.allTests || a.jsPullSubMulti) {
+            addTests(a.baseMsgs, a.maxSize, tests, sizes, msgsMultiple,
+                (msize, mcnt) -> {
+                    List<String> subjects = new ArrayList<>();
+                    subjects.add(JsPullSubBenchmark.getSubject(mcnt, msize, 1));
+                    subjects.add(JsPullSubBenchmark.getSubject(mcnt, msize, 2));
+                    subjects.add(JsPullSubBenchmark.getSubject(mcnt, msize, 3));
+                    return new JsPubBenchmark("JsPubForPullMulti " + msize, mcnt, msize, a.jsFile, false, true, subjects);
+                });
+            addTests(a.baseMsgs, a.maxSize, tests, sizes, msgsMultiple,
+                (msize, mcnt) -> new JsPullSubBenchmark("JsPullSubMulti " + msize, mcnt, msize, true));
         }
 
         if (a.allTests || a.jsPubRounds) {
@@ -291,6 +326,8 @@ public class NatsAutoBench {
         boolean jsPubAsync = false;
         boolean jsSub = false;
         boolean jsPubRounds = false;
+        boolean jsPullSub = false;
+        boolean jsPullSubMulti = false;
         boolean jsFile = false;
         String lcsv = null;
     }
@@ -365,6 +402,14 @@ public class NatsAutoBench {
                     case "jspubrounds":
                         a.allTests = false;
                         a.jsPubRounds = true;
+                        break;
+                    case "jspullsub":
+                        a.allTests = false;
+                        a.jsPullSub = true;
+                        break;
+                    case "jspullsubmulti":
+                        a.allTests = false;
+                        a.jsPullSubMulti = true;
                         break;
                     case "jsfile":
                         a.jsFile = true;

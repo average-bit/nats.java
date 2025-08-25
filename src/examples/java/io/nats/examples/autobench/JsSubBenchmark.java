@@ -27,7 +27,7 @@ public class JsSubBenchmark extends AutoBenchmark {
     }
 
     public void execute(Options connectOptions) throws InterruptedException {
-        String subject = JsPubBenchmark.getSubject(getMessageCount(), getMessageSize());
+        String subject = JsPullSubBenchmark.getSubject(getMessageCount(), getMessageSize(), 0);
 
         try {
             Connection nc = Nats.connect(connectOptions);
@@ -46,7 +46,7 @@ public class JsSubBenchmark extends AutoBenchmark {
                 this.endTiming();
             } finally {
                 try {
-                    nc.jetStreamManagement().deleteStream(JsPubBenchmark.getStream(getMessageCount(), getMessageSize()));
+                    nc.jetStreamManagement().deleteStream(JsPullSubBenchmark.getStream(getMessageCount(), getMessageSize()));
                 } catch (IOException | JetStreamApiException ex) {
                     this.setException(ex);
                 }
