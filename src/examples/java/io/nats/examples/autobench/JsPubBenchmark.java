@@ -67,6 +67,9 @@ public class JsPubBenchmark extends AutoBenchmark {
                 else {
                     for (int i = 0; i < this.getMessageCount(); i++) {
                         js.publishAsync(subjects.get(i % subjects.size()), payload);
+                        if (i > 0 && i % 1000 == 0) {
+                            Thread.sleep(1);
+                        }
                     }
                 }
                 defaultFlush(nc);
